@@ -42,6 +42,11 @@
                           <li class="divider"></li>
                         </c:if>
                         <c:if test="${grouperRequestContainer.groupContainer.canAdmin }">
+
+                           <%-- Start Custom Item --%>
+                         <li><a href="#" onclick="return guiV2link('operation=UiV2GroupExternalUsers.add&groupId=${grouperRequestContainer.groupContainer.guiGroup.group.id}'); return false;"
+                              >Add external email</a></li>
+                           <%-- End Custom Item --%>
                           <li><a href="#" onclick="return guiV2link('operation=UiV2Group.groupCopy&groupId=${grouperRequestContainer.groupContainer.guiGroup.group.id}'); return false;"
                               >${textContainer.text['groupViewCopyGroupButton'] }</a></li>
                           <li><a href="#" onclick="return guiV2link('operation=UiV2Group.groupDelete&groupId=${grouperRequestContainer.groupContainer.guiGroup.group.id}'); return false;"

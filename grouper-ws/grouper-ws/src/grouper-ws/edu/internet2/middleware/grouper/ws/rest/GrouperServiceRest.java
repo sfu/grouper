@@ -18,117 +18,20 @@
  */
 package edu.internet2.middleware.grouper.ws.rest;
 
-import java.util.HashSet;
-import java.util.Set;
-
-import org.apache.commons.lang.StringUtils;
-
+import ca.sfu.isc.grouper.ws.coresoap.WsExternalEmailSubjectSaveResults;
+import ca.sfu.isc.grouper.ws.rest.externalEmailSubject.WsRestExternalEmailSubjectSaveRequest;
 import edu.internet2.middleware.grouper.attr.AttributeDefNameSave;
 import edu.internet2.middleware.grouper.attr.AttributeDefSave;
 import edu.internet2.middleware.grouper.misc.GrouperVersion;
 import edu.internet2.middleware.grouper.util.GrouperUtil;
-import edu.internet2.middleware.grouper.ws.coresoap.GrouperService;
-import edu.internet2.middleware.grouper.ws.coresoap.WsAddMemberLiteResult;
-import edu.internet2.middleware.grouper.ws.coresoap.WsAddMemberResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsAssignAttributeDefNameInheritanceResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsAssignAttributesBatchResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsAssignAttributesLiteResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsAssignAttributesResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsAssignGrouperPrivilegesLiteResult;
-import edu.internet2.middleware.grouper.ws.coresoap.WsAssignGrouperPrivilegesResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsAssignPermissionsLiteResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsAssignPermissionsResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsAttributeDefAssignActionResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsAttributeDefDeleteLiteResult;
-import edu.internet2.middleware.grouper.ws.coresoap.WsAttributeDefDeleteResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsAttributeDefNameDeleteLiteResult;
-import edu.internet2.middleware.grouper.ws.coresoap.WsAttributeDefNameDeleteResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsAttributeDefNameSaveLiteResult;
-import edu.internet2.middleware.grouper.ws.coresoap.WsAttributeDefNameSaveResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsAttributeDefSaveLiteResult;
-import edu.internet2.middleware.grouper.ws.coresoap.WsAttributeDefSaveResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsDeleteMemberLiteResult;
-import edu.internet2.middleware.grouper.ws.coresoap.WsDeleteMemberResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsExternalSubjectDeleteResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsExternalSubjectSaveResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsFindAttributeDefNamesResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsFindAttributeDefsResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsFindExternalSubjectsResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsFindGroupsResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsFindStemsResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsGetAttributeAssignActionsResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsGetAttributeAssignmentsResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsGetGrouperPrivilegesLiteResult;
-import edu.internet2.middleware.grouper.ws.coresoap.WsGetGroupsLiteResult;
-import edu.internet2.middleware.grouper.ws.coresoap.WsGetGroupsResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsGetMembersLiteResult;
-import edu.internet2.middleware.grouper.ws.coresoap.WsGetMembersResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsGetMembershipsResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsGetPermissionAssignmentsResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsGetSubjectsResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsGroupDeleteLiteResult;
-import edu.internet2.middleware.grouper.ws.coresoap.WsGroupDeleteResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsGroupLookup;
-import edu.internet2.middleware.grouper.ws.coresoap.WsGroupSaveLiteResult;
-import edu.internet2.middleware.grouper.ws.coresoap.WsGroupSaveResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsHasMemberLiteResult;
-import edu.internet2.middleware.grouper.ws.coresoap.WsHasMemberResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsMemberChangeSubjectLiteResult;
-import edu.internet2.middleware.grouper.ws.coresoap.WsMemberChangeSubjectResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsMessageAcknowledgeResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsMessageResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsStemDeleteLiteResult;
-import edu.internet2.middleware.grouper.ws.coresoap.WsStemDeleteResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsStemSaveLiteResult;
-import edu.internet2.middleware.grouper.ws.coresoap.WsStemSaveResults;
-import edu.internet2.middleware.grouper.ws.coresoap.WsSubjectLookup;
+import edu.internet2.middleware.grouper.ws.coresoap.*;
 import edu.internet2.middleware.grouper.ws.exceptions.WsInvalidQueryException;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAssignAttributeDefActionsRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAssignAttributeDefNameInheritanceLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAssignAttributeDefNameInheritanceRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAssignAttributesBatchRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAssignAttributesLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAssignAttributesRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAttributeDefDeleteLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAttributeDefDeleteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAttributeDefNameDeleteLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAttributeDefNameDeleteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAttributeDefNameSaveLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAttributeDefNameSaveRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAttributeDefSaveLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAttributeDefSaveRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestFindAttributeDefNamesLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestFindAttributeDefNamesRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestFindAttributeDefsLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestFindAttributeDefsRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestGetAttributeAssignActionsLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestGetAttributeAssignActionsRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestGetAttributeAssignmentsLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestGetAttributeAssignmentsRequest;
+import edu.internet2.middleware.grouper.ws.rest.attribute.*;
 import edu.internet2.middleware.grouper.ws.rest.externalSubject.WsRestExternalSubjectDeleteRequest;
 import edu.internet2.middleware.grouper.ws.rest.externalSubject.WsRestExternalSubjectSaveRequest;
 import edu.internet2.middleware.grouper.ws.rest.externalSubject.WsRestFindExternalSubjectsRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestAssignGrouperPrivilegesLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestAssignGrouperPrivilegesRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestFindGroupsLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestFindGroupsRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestGetGrouperPrivilegesLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestGetGroupsLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestGetGroupsRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestGroupDeleteLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestGroupDeleteRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestGroupSaveLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestGroupSaveRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestHasMemberLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestHasMemberRequest;
-import edu.internet2.middleware.grouper.ws.rest.member.WsRestAddMemberLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.member.WsRestAddMemberRequest;
-import edu.internet2.middleware.grouper.ws.rest.member.WsRestDeleteMemberLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.member.WsRestDeleteMemberRequest;
-import edu.internet2.middleware.grouper.ws.rest.member.WsRestGetMembersLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.member.WsRestGetMembersRequest;
-import edu.internet2.middleware.grouper.ws.rest.member.WsRestMemberChangeSubjectLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.member.WsRestMemberChangeSubjectRequest;
+import edu.internet2.middleware.grouper.ws.rest.group.*;
+import edu.internet2.middleware.grouper.ws.rest.member.*;
 import edu.internet2.middleware.grouper.ws.rest.membership.WsRestGetMembershipsLiteRequest;
 import edu.internet2.middleware.grouper.ws.rest.membership.WsRestGetMembershipsRequest;
 import edu.internet2.middleware.grouper.ws.rest.messaging.WsRestAcknowledgeMessageRequest;
@@ -138,15 +41,14 @@ import edu.internet2.middleware.grouper.ws.rest.permission.WsRestAssignPermissio
 import edu.internet2.middleware.grouper.ws.rest.permission.WsRestAssignPermissionsRequest;
 import edu.internet2.middleware.grouper.ws.rest.permission.WsRestGetPermissionAssignmentsLiteRequest;
 import edu.internet2.middleware.grouper.ws.rest.permission.WsRestGetPermissionAssignmentsRequest;
-import edu.internet2.middleware.grouper.ws.rest.stem.WsRestFindStemsLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.stem.WsRestFindStemsRequest;
-import edu.internet2.middleware.grouper.ws.rest.stem.WsRestStemDeleteLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.stem.WsRestStemDeleteRequest;
-import edu.internet2.middleware.grouper.ws.rest.stem.WsRestStemSaveLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.stem.WsRestStemSaveRequest;
+import edu.internet2.middleware.grouper.ws.rest.stem.*;
 import edu.internet2.middleware.grouper.ws.rest.subject.WsRestGetSubjectsLiteRequest;
 import edu.internet2.middleware.grouper.ws.rest.subject.WsRestGetSubjectsRequest;
 import edu.internet2.middleware.grouper.ws.util.GrouperServiceUtils;
+import org.apache.commons.lang.StringUtils;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * consolidated static list of of rest web services (only web service methods here
@@ -2648,5 +2550,31 @@ public class GrouperServiceRest {
   
   }
 
+  /**
+     * <pre>
+     * based on a submitted object of type WsRestExternalSubjectSaveRequest, save external subjects.  e.g. url:
+     * /v1_3_000/externalSubjects
+     * </pre>
+     * @param clientVersion version of client, e.g. v1_3_000
+     * @param wsRestExternalEmailSubjectSaveRequest is the request body converted to an object
+     * @return the result
+     */
+    public static WsExternalEmailSubjectSaveResults externalEmailSubjectSave(GrouperVersion clientVersion,
+                                                                             WsRestExternalEmailSubjectSaveRequest wsRestExternalEmailSubjectSaveRequest) {
+
+      //cant be null
+      GrouperUtil.assertion(wsRestExternalEmailSubjectSaveRequest != null,
+          "Body of request must contain an instance of "
+              + WsRestExternalSubjectSaveRequest.class.getSimpleName() + " in xml, xhtml, json, etc");
+
+      String clientVersionString = GrouperServiceUtils.pickOne(clientVersion.toString(),
+          GrouperVersion.stringValueOrNull(wsRestExternalEmailSubjectSaveRequest.getClientVersion()), false, "clientVersion");
+
+      //get the results
+      return new GrouperService(false).externalEmailSubjectSave(
+          clientVersionString, wsRestExternalEmailSubjectSaveRequest.getWsExternalEmailSubjects(),
+          wsRestExternalEmailSubjectSaveRequest.getActAsSubjectLookup(), wsRestExternalEmailSubjectSaveRequest.getParams());
+
+    }
 
 }

@@ -19,60 +19,15 @@
  */
 package edu.internet2.middleware.grouper.ws.rest;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-
-import org.apache.commons.lang.StringUtils;
-
+import ca.sfu.isc.grouper.ws.rest.externalEmailSubject.WsRestExternalEmailSubjectSaveRequest;
 import edu.internet2.middleware.grouper.ws.coresoap.*;
 import edu.internet2.middleware.grouper.ws.exceptions.WsInvalidQueryException;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAssignAttributeDefActionsRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAssignAttributeDefNameInheritanceLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAssignAttributeDefNameInheritanceRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAssignAttributesBatchRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAssignAttributesLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAssignAttributesRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAttributeDefDeleteLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAttributeDefDeleteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAttributeDefNameDeleteLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAttributeDefNameDeleteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAttributeDefNameSaveLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAttributeDefNameSaveRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAttributeDefSaveLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestAttributeDefSaveRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestFindAttributeDefNamesLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestFindAttributeDefNamesRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestFindAttributeDefsLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestFindAttributeDefsRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestGetAttributeAssignActionsLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestGetAttributeAssignActionsRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestGetAttributeAssignmentsLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.attribute.WsRestGetAttributeAssignmentsRequest;
+import edu.internet2.middleware.grouper.ws.rest.attribute.*;
 import edu.internet2.middleware.grouper.ws.rest.externalSubject.WsRestExternalSubjectDeleteRequest;
 import edu.internet2.middleware.grouper.ws.rest.externalSubject.WsRestExternalSubjectSaveRequest;
 import edu.internet2.middleware.grouper.ws.rest.externalSubject.WsRestFindExternalSubjectsRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestAssignGrouperPrivilegesLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestAssignGrouperPrivilegesRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestFindGroupsLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestFindGroupsRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestGetGrouperPrivilegesLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestGetGroupsLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestGetGroupsRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestGroupDeleteLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestGroupDeleteRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestGroupSaveLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestGroupSaveRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestHasMemberLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.group.WsRestHasMemberRequest;
-import edu.internet2.middleware.grouper.ws.rest.member.WsRestAddMemberLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.member.WsRestAddMemberRequest;
-import edu.internet2.middleware.grouper.ws.rest.member.WsRestDeleteMemberLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.member.WsRestDeleteMemberRequest;
-import edu.internet2.middleware.grouper.ws.rest.member.WsRestGetMembersLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.member.WsRestGetMembersRequest;
-import edu.internet2.middleware.grouper.ws.rest.member.WsRestMemberChangeSubjectLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.member.WsRestMemberChangeSubjectRequest;
+import edu.internet2.middleware.grouper.ws.rest.group.*;
+import edu.internet2.middleware.grouper.ws.rest.member.*;
 import edu.internet2.middleware.grouper.ws.rest.membership.WsRestGetMembershipsLiteRequest;
 import edu.internet2.middleware.grouper.ws.rest.membership.WsRestGetMembershipsRequest;
 import edu.internet2.middleware.grouper.ws.rest.messaging.WsRestAcknowledgeMessageRequest;
@@ -82,14 +37,14 @@ import edu.internet2.middleware.grouper.ws.rest.permission.WsRestAssignPermissio
 import edu.internet2.middleware.grouper.ws.rest.permission.WsRestAssignPermissionsRequest;
 import edu.internet2.middleware.grouper.ws.rest.permission.WsRestGetPermissionAssignmentsLiteRequest;
 import edu.internet2.middleware.grouper.ws.rest.permission.WsRestGetPermissionAssignmentsRequest;
-import edu.internet2.middleware.grouper.ws.rest.stem.WsRestFindStemsLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.stem.WsRestFindStemsRequest;
-import edu.internet2.middleware.grouper.ws.rest.stem.WsRestStemDeleteLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.stem.WsRestStemDeleteRequest;
-import edu.internet2.middleware.grouper.ws.rest.stem.WsRestStemSaveLiteRequest;
-import edu.internet2.middleware.grouper.ws.rest.stem.WsRestStemSaveRequest;
+import edu.internet2.middleware.grouper.ws.rest.stem.*;
 import edu.internet2.middleware.grouper.ws.rest.subject.WsRestGetSubjectsLiteRequest;
 import edu.internet2.middleware.grouper.ws.rest.subject.WsRestGetSubjectsRequest;
+import org.apache.commons.lang.StringUtils;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  *
@@ -313,6 +268,8 @@ public class WsRestClassLookup {
     addAliasClass(WsRestFindExternalSubjectsRequest.class);
     addAliasClass(WsRestExternalSubjectDeleteRequest.class);
     addAliasClass(WsRestExternalSubjectSaveRequest.class);
+
+    addAliasClass(WsRestExternalEmailSubjectSaveRequest.class);
 
   }
   
