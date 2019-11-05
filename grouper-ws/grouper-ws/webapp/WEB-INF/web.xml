@@ -71,6 +71,11 @@
     <url-pattern>/servicesRest/*</url-pattern>
   </servlet-mapping>
 
+<!-- Removing the security constraints gives any authenticated user
+     access to the API, but doesn't give them any more access than they
+     have in the UI. Authentication is handled via LDAP, configured
+     in grouper-ws.properties
+
 	<security-constraint>
 		<web-resource-collection>
 			<web-resource-name>Web services</web-resource-name>
@@ -87,10 +92,10 @@
       <url-pattern>/servicesRest/*</url-pattern>
     </web-resource-collection>
     <auth-constraint>
-      <!-- NOTE:  This role is not present in the default users file -->
       <role-name>grouper_user</role-name>
     </auth-constraint>
   </security-constraint>
+-->
 
 	<!-- Define the Login Configuration for this Application -->
 	<login-config>
