@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 /*
- * @author mchyzer $Id: Encrypt.java,v 1.1 2008-11-30 10:57:26 mchyzer Exp $
+ * @author mchyzer $Id: Encrypt.java,v 1.3 2008-12-02 05:14:11 mchyzer Exp $
  */
-package edu.internet2.middleware.grouperClientExt.edu.internet2.middleware.morphString;
+package edu.internet2.middleware.morphString;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -24,6 +24,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PushbackInputStream;
 import java.util.Arrays;
+
+import edu.internet2.middleware.grouperClient.util.GrouperClientUtils;
+import edu.internet2.middleware.grouperClientExt.org.apache.commons.lang3.exception.ExceptionUtils;
 
 /**
  * from sh or bat file to encrypt a string
@@ -37,30 +40,30 @@ public class Encrypt {
   public static void main(String[] args) {
 
     //allow this in case the other way messes up for some reason
-    boolean dontMask = (args.length == 1 && MorphStringUtils.equals("dontMask", args[0]));
+    boolean dontMask = (args.length == 1 && GrouperClientUtils.equals("dontMask", args[0]));
     
-    //see if config file can be found
-    try {
-      MorphPropertyFileUtils.retrieveProperties();
-    } catch (Exception e) {
-      //probably cant find them, prompt to find config file
-      System.out.print("Enter the location of morphString.properties: ");
-      
-      //  open up standard input 
-      BufferedReader br = new BufferedReader(new InputStreamReader(System.in)); 
-
-      //  read the username from the command-line; need to use try/catch with the 
-      //  readLine() method 
-      String configLocation = null;
-      try { 
-        configLocation = br.readLine(); 
-      } catch (IOException ioe) { 
-         System.out.println("IO error trying to read config file location! " + MorphStringUtils.getFullStackTrace(ioe));
-         System.exit(1); 
-      } 
-      MorphPropertyFileUtils.retrievePropertiesFromFile(MorphStringUtils.trimToEmpty(configLocation));
-      
-    }
+//    //see if config file can be found
+//    try {
+//      MorphStringConfig.retrieveConfig().properties();
+//    } catch (Exception e) {
+//      //probably cant find them, prompt to find config file
+//      System.out.print("Enter the location of morphString.properties: ");
+//      
+//      //  open up standard input 
+//      BufferedReader br = new BufferedReader(new InputStreamReader(System.in)); 
+//
+//      //  read the username from the command-line; need to use try/catch with the 
+//      //  readLine() method 
+//      String configLocation = null;
+//      try { 
+//        configLocation = br.readLine(); 
+//      } catch (IOException ioe) { 
+//         System.out.println("IO error trying to read config file location! " + ExceptionUtils.getStackTrace(ioe));
+//         System.exit(1); 
+//      } 
+//      MorphPropertyFileUtils.retrievePropertiesFromFile(MorphStringUtils.trimToEmpty(configLocation));
+//      
+//    }
     
     encryptInput(dontMask);
 
@@ -85,7 +88,7 @@ public class Encrypt {
       try { 
          passwordString = br.readLine(); 
       } catch (IOException ioe) { 
-         System.out.println("IO error trying to read your name! " + MorphStringUtils.getFullStackTrace(ioe));
+         System.out.println("IO error! " + ExceptionUtils.getStackTrace(ioe));
          System.exit(1); 
       } 
 
@@ -98,7 +101,7 @@ public class Encrypt {
       }
       passwordString = String.valueOf(password);
     }
-    if (MorphStringUtils.isBlank(passwordString)) {
+    if (GrouperClientUtils.isBlank(passwordString)) {
       System.out.println("No input entered");
     } else {
       System.out.println("The encrypted string is: " + Morph.encrypt(passwordString));
@@ -108,10 +111,11 @@ public class Encrypt {
   
   /**
    * @param in stream to be used (e.g. System.in)
-   * @param prompt The prompt to display to the user.
-   * @return The password as entered by the user.
+   *@param prompt The prompt to display to the user.
+   *@return The password as entered by the user.
    * @throws IOException 
    */
+
   public static final char[] password(InputStream in, String prompt) throws IOException {
     MaskingThread maskingthread = new MaskingThread(prompt);
 

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.internet2.middleware.grouperClientExt.edu.internet2.middleware.morphString;
+package edu.internet2.middleware.morphString;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -26,7 +26,9 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
+import edu.internet2.middleware.grouperClient.util.GrouperClientUtils;
 import edu.internet2.middleware.grouperClientExt.org.apache.commons.codec.binary.Base64;
+
 
 /**
  * The purpose of this class is to provide encryption 
@@ -126,7 +128,7 @@ public class Crypto {
    */
   protected void init(String secret) {
     
-    if (MorphStringUtils.isBlank(secret)) {
+    if (GrouperClientUtils.isBlank(secret)) {
       throw new NullPointerException("Must supply a non blank encrypt.key");
     }
     StringBuilder secretBuilder = new StringBuilder(secret);

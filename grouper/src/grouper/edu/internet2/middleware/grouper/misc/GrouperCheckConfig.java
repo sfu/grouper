@@ -133,6 +133,7 @@ import edu.internet2.middleware.grouper.userData.GrouperUserDataUtils;
 import edu.internet2.middleware.grouper.util.GrouperUtil;
 import edu.internet2.middleware.grouperClient.util.ExpirableCache;
 import edu.internet2.middleware.morphString.Morph;
+import edu.internet2.middleware.morphString.MorphStringConfig;
 import edu.internet2.middleware.subject.Subject;
 import edu.internet2.middleware.subject.SubjectCheckConfig;
 import edu.internet2.middleware.subject.SubjectNotFoundException;
@@ -1320,8 +1321,12 @@ public class GrouperCheckConfig {
 
     //checkConfigProperties(GROUPER_PROPERTIES_NAME, "grouper.example.properties");
     //checkConfigProperties("grouper.hibernate.properties", "grouper.hibernate.example.properties");
-    checkConfigProperties("morphString.properties", "morphString.example.properties");
-    
+    //checkConfigProperties("morphString.properties", "morphString.example.properties");
+    if (GrouperUtil.isBlank(MorphStringConfig.retrieveConfig().propertyValueString("encrypt.key"))) {
+      String error = "Error: Grouper expects an encrpyt key (generally a long random alphanumeric string) \"encrypt.key\" in properties file morphString.properties";
+      System.err.println(error);
+      LOG.error(error);
+    }
     checkGrouperConfigDbChange();
     checkGrouperConfigGroupNameValidators();
     checkGrouperConfigIncludeExcludeAndGroups();
@@ -1805,7 +1810,7 @@ public class GrouperCheckConfig {
     checkJar("ehcache-core-2.4.8.jar", 1030367, "net.sf.ehcache.terracotta.TerracottaClientRejoinListener", "null");
     checkJar("ezmorph-1.0.6.jar", 86487, "net.sf.ezmorph.MorphException", "null");
     checkJar("groovy-all-2.5.0-beta-2.jar", 7715312, "groovy.beans.Bindable", "2.5.0-beta-2");
-    checkJar("grouperClient.jar", GrouperUtil.toSet(4468322L, 4397537L, 4422891L, 4423489L, 4423587L, 4423679L, 4475423L, 4469727L, 4470134L, 4471310L), "edu.internet2.middleware.grouperClient.ClientOperation", "2.4.0");
+    checkJar("grouperClient.jar", GrouperUtil.toSet(4468322L, 4397537L, 4422891L, 4423489L, 4423587L, 4423679L, 4475423L, 4469727L, 4470134L, 4471310L, 4431078L, 4448499L, 4452443L, 4449157L), "edu.internet2.middleware.grouperClient.ClientOperation", "2.5.0");
     checkJar("hibernate-c3p0-5.0.12.Final.jar", 11606, "org.hibernate.c3p0.internal.C3P0MessageLogger", "5.0.12.Final");
     checkJar("hibernate-commons-annotations-5.0.1.Final.jar", 75288, "org.hibernate.annotations.common.Version", "5.0.1.Final");
     checkJar("hibernate-core-5.0.12.Final.jar", 5619332, "org.hibernate.SessionException", "5.0.12.Final");
@@ -1828,7 +1833,6 @@ public class GrouperCheckConfig {
     checkJar("log4j-1.2.17.jar", 489884, "org.apache.log4j.Appender", "1.2.17");
     checkJar("mail-1.4.7.jar", 521157, "javax.mail.NoSuchProviderException", "1.4.7");
     checkJar("mchange-commons-java-0.2.14.jar", 623971, "com.mchange.v1.identicator.StrongIdentityIdenticator", "0.2.14");
-    checkJar("morphString.jar", 78679, "edu.internet2.middleware.morphString.Crypto", "1.2");
     checkJar("oro-2.0.8.jar", 65261, "org.apache.oro.io.AwkFilenameFilter", "2.0.8 2003-12-28 11:00:13");
     checkJar("p6spy-3.6.0.jar", 123220, "com.p6spy.engine.logging.P6LogOptionsMBean", "null");
     checkJar("quartz-2.3.0.jar", 690992, "org.quartz.Calendar", "null");

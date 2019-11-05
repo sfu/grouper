@@ -33,8 +33,8 @@ import java.util.logging.SimpleFormatter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import edu.internet2.middleware.grouperClient.config.db.ConfigDatabaseLogic;
 import edu.internet2.middleware.grouperClient.ws.beans.WsSubject;
-import edu.internet2.middleware.grouperClientExt.edu.internet2.middleware.morphString.Crypto;
 import edu.internet2.middleware.grouperClientExt.org.apache.commons.codec.binary.Base64;
 import edu.internet2.middleware.grouperClientExt.org.apache.commons.codec.digest.DigestUtils;
 import edu.internet2.middleware.grouperClientExt.org.apache.commons.httpclient.Credentials;
@@ -58,6 +58,8 @@ import edu.internet2.middleware.grouperClientExt.org.apache.commons.jexl2.MapCon
 import edu.internet2.middleware.grouperClientExt.org.apache.commons.logging.Log;
 import edu.internet2.middleware.grouperClientExt.org.apache.commons.logging.LogFactory;
 import edu.internet2.middleware.grouperClientExt.org.apache.commons.logging.impl.Jdk14Logger;
+import edu.internet2.middleware.morphString.Crypto;
+import edu.internet2.middleware.morphString.MorphStringConfig;
 
 /**
  * utility methods specific to grouper client
@@ -243,7 +245,7 @@ public class GrouperClientUtils extends GrouperClientCommonUtils {
   /**
    * logger
    */
-  private static Log LOG = GrouperClientUtils.retrieveLog(GrouperClientUtils.class);
+  private static Log LOG = LogFactory.getLog(GrouperClientUtils.class);
 
   /** class object for this string */
   private static Map<String, Class<?>> jexlClass = new HashMap<String, Class<?>>();
@@ -525,17 +527,24 @@ public class GrouperClientUtils extends GrouperClientCommonUtils {
    * @return the encrypt key
    */
   public static String encryptKey() {
-    String encryptKey = GrouperClientConfig.retrieveConfig().propertyValueStringRequired("encrypt.key");
+    String encryptKey = null;
+    boolean disableExternalFileLookup = false;
     
-    boolean disableExternalFileLookup = GrouperClientConfig.retrieveConfig().propertyValueBoolean(
-        "encrypt.disableExternalFileLookup", false);
-    
+    try {
+      encryptKey = MorphStringConfig.retrieveConfig().propertyValueString("encrypt.key");
+      disableExternalFileLookup = MorphStringConfig.retrieveConfig().propertyValueBoolean(
+          "encrypt.disableExternalFileLookup", false);
+    } catch (Exception e) {
+      encryptKey = GrouperClientConfig.retrieveConfig().propertyValueStringRequired("encrypt.key");
+      disableExternalFileLookup = GrouperClientConfig.retrieveConfig().propertyValueBoolean(
+          "encrypt.disableExternalFileLookup", false);
+    }
+        
     //lets lookup if file
     encryptKey = GrouperClientUtils.readFromFileIfFile(encryptKey, disableExternalFileLookup);
-    
+
     //the server does this, so if the key is blank, it will still have something there, so be consistent
     if (GrouperClientConfig.retrieveConfig().propertyValueBoolean("encrypt.encryptLikeServer", false)) {
-      
       encryptKey += "w";
     }
     

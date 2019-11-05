@@ -20,15 +20,18 @@
  */
 package edu.internet2.middleware.grouperClientExt.edu.internet2.middleware.morphString;
 
+
 /**
  * @author Chris Hyzer
+ * @deprecated use edu.internet2.middleware.morphString.Morph instead!
  */
+@Deprecated
 public class Morph {
 
   /**
    * 
    */
-  public static final String ENCRYPT_KEY = "encrypt.key";
+  public static final String ENCRYPT_KEY = edu.internet2.middleware.morphString.Morph.ENCRYPT_KEY;
 
   /**
    * @param in
@@ -37,9 +40,7 @@ public class Morph {
    * @return String
    */
   public static String encrypt(String in) {
-    in = MorphStringUtils.trimToEmpty(in);
-
-    return Crypto.getThreadLocalCrypto().encrypt(in);
+    return edu.internet2.middleware.morphString.Morph.encrypt(in);
   }
 
   /**
@@ -49,18 +50,7 @@ public class Morph {
    * @return String
    */
   public static String decrypt(String in) {
-    //make sure no extraneous spaces
-    in = MorphStringUtils.trim(in);
-    
-    String result = null;
-    //add something on end so it is more than just the key and rijndael
-    try {
-      result = Crypto.getThreadLocalCrypto().decrypt(in);
-    } catch (RuntimeException re) {
-      //let be descriptive to help out here
-      throw new RuntimeException("Problem decrypting string: " + re.getMessage(), re );
-    }
-    return result;
+    return edu.internet2.middleware.morphString.Morph.decrypt(in);
   }
 
   /**
@@ -70,36 +60,14 @@ public class Morph {
    * @return String
    */
   public static String decryptIfFile(String in) {
-
-    in = MorphStringUtils.trimToEmpty(in);
-    String newIn = MorphStringUtils.readFromFileIfFile(in);
-    if (!MorphStringUtils.equals(in, newIn)) {
-      String unencrypted = decrypt(newIn);
-      return unencrypted;
-    }
-    return in; 
+    return edu.internet2.middleware.morphString.Morph.decryptIfFile(in);
   }
   
-  /** if testing, and not relying on morph key being there, use this */
-  public static String testMorphKey = null;
-
   /**
    * @return the key to encrypt/decrypt
    */
   public static String key() {
-    if (testMorphKey != null && !"".equals(testMorphKey.trim())) {
-      return testMorphKey;
-    }
-    String decryptKey = MorphPropertyFileUtils.retrievePropertyString(ENCRYPT_KEY);
-    
-    if (MorphStringUtils.isBlank(decryptKey)) {
-      throw new RuntimeException("You must have a decrypt key in the " 
-          + MorphPropertyFileUtils.MORPH_STRING_PROPERTIES + " file under " + ENCRYPT_KEY);
-    }
-    
-    decryptKey = MorphStringUtils.readFromFileIfFile(decryptKey);
-    
-    return decryptKey + "w";
+    return Morph.key();
   }
 
   /**
