@@ -30,10 +30,10 @@ replace.grouper.home=true
 grouper.role=*
 
 #Switches to UI specific log4j.properties
-#use.local.log4j=true
+use.local.log4j=true
 
 #Make sure directory exists!
-#local.log4j.output-dir=c:/tomcat_5-5/logs/
+local.log4j.output-dir=/var/log/grouper
 
 #If you want to email errors append to grouper_mail - only works with use.local.log4j=true
 error.append=grouper_log
