@@ -2018,6 +2018,9 @@ public class GrouperInstaller {
       this.buildDuo(new File(sourceDir + File.separator + "grouper-misc" + File.separator + "grouper-duo"));
       this.buildDuo(new File(sourceTagDir + File.separator + "grouper-misc" + File.separator + "grouper-duo"));
       
+      this.buildBox(new File(sourceDir + File.separator + "grouper-misc" + File.separator + "grouper-box"));
+      this.buildBox(new File(sourceTagDir + File.separator + "grouper-misc" + File.separator + "grouper-box"));
+      
     }
     
 
@@ -2094,7 +2097,7 @@ public class GrouperInstaller {
         continue;
       }
       
-      Set<String> fileKeys = new HashSet<String>(GrouperInstallerUtils.nonNull(
+      Set<String> fileKeys = new LinkedHashSet<String>(GrouperInstallerUtils.nonNull(
           GrouperInstallerUtils.splitTrimToList(filesToMakePatchFromCommaSeparated, ",")));
 
       for (String fileKey : fileKeys) {
@@ -2103,7 +2106,7 @@ public class GrouperInstaller {
           System.out.println("Do not specify .class files, only .java files (will be compiled): '" + fileKey + "'!!!  please re-enter the list");
           continue OUTER;
         }
-        
+
         GrouperInstallerIndexFile grouperInstallerIndexFile = indexOfFiles.get(fileKey);
         if (grouperInstallerIndexFile == null) {
           grouperInstallerIndexFile = indexOfTagFiles.get(fileKey);
@@ -2701,6 +2704,25 @@ public class GrouperInstaller {
         this.patchCreateProcessFiles(theIndexOfFiles, 
             new File(theSourceDir.getAbsolutePath() + File.separator + "grouper-misc" + File.separator + "grouper-duo"),
             new File(theSourceDir.getAbsolutePath() + File.separator + "grouper-misc" + File.separator + "grouper-duo" 
+                + File.separator + "dist" + File.separator + "bin"),
+            PatchFileType.clazz);
+
+        // box
+        this.patchCreateProcessFiles(theIndexOfFiles, 
+            new File(theSourceDir.getAbsolutePath() + File.separator + "grouper-misc" + File.separator + "grouper-box"),
+            new File(theSourceDir.getAbsolutePath() + File.separator + "grouper-misc" + File.separator + "grouper-box" 
+                + File.separator + "src"),
+            PatchFileType.clazz);
+
+        this.patchCreateProcessFiles(theIndexOfFiles, 
+            new File(theSourceDir.getAbsolutePath() + File.separator + "grouper-misc" + File.separator + "grouper-box"),
+            new File(theSourceDir.getAbsolutePath() + File.separator + "grouper-misc" + File.separator + "grouper-box" 
+                + File.separator + "changeLogConsumerSource"),
+            PatchFileType.clazz);
+
+        this.patchCreateProcessFiles(theIndexOfFiles, 
+            new File(theSourceDir.getAbsolutePath() + File.separator + "grouper-misc" + File.separator + "grouper-box"),
+            new File(theSourceDir.getAbsolutePath() + File.separator + "grouper-misc" + File.separator + "grouper-box" 
                 + File.separator + "dist" + File.separator + "bin"),
             PatchFileType.clazz);
 
@@ -3309,6 +3331,51 @@ public class GrouperInstaller {
     }
 
     System.out.println("\nEnd building duo");
+    System.out.println("##################################\n");
+    
+  }
+
+  /**
+   * build box API
+   * @param boxDir
+   */
+  private void buildBox(File boxDir) {
+    if (!boxDir.exists() || boxDir.isFile()) {
+      throw new RuntimeException("Cant find box: " + boxDir.getAbsolutePath());
+    }
+    
+    File duoBuildToDir = new File(boxDir.getAbsoluteFile() + File.separator + "dist" + File.separator + "bin");
+    
+    boolean rebuildBox = true;
+    
+    if (duoBuildToDir.exists()) {
+      System.out.print("Grouper box has been built in the past, do you want it rebuilt? (t|f) [t]: ");
+      rebuildBox = readFromStdInBoolean(true, "grouperInstaller.autorun.rebuildBoxAfterHavingBeenBuilt");
+    }
+    
+    if (!rebuildBox) {
+      return;
+    }
+
+    List<String> commands = new ArrayList<String>();
+    
+    addAntCommands(commands);
+    
+    System.out.println("\n##################################");
+    System.out.println("Building box with command:\n" + boxDir.getAbsolutePath() + "> " 
+        + convertCommandsIntoCommand(commands) + "\n");
+    
+    CommandResult commandResult = GrouperInstallerUtils.execCommand(GrouperInstallerUtils.toArray(commands, String.class),
+        true, true, null, boxDir, null, true);
+    
+    if (!GrouperInstallerUtils.isBlank(commandResult.getErrorText())) {
+      System.out.println("stderr: " + commandResult.getErrorText());
+    }
+    if (!GrouperInstallerUtils.isBlank(commandResult.getOutputText())) {
+      System.out.println("stdout: " + commandResult.getOutputText());
+    }
+
+    System.out.println("\nEnd building box");
     System.out.println("##################################\n");
     
   }
@@ -7314,9 +7381,10 @@ public class GrouperInstaller {
   /**
    * revert patches for an app
    * @param thisAppToRevert
+   * @param originalAppToUpgrade 
    * @return if reverted
    */
-  private boolean revertPatches(AppToUpgrade thisAppToRevert) {
+  private boolean revertPatches(AppToUpgrade thisAppToRevert, AppToUpgrade originalAppToUpgrade) {
 
     if (thisAppToRevert == AppToUpgrade.CLIENT) {
       throw new RuntimeException("Cant revert " + thisAppToRevert);
@@ -7530,6 +7598,8 @@ public class GrouperInstaller {
 
               File newFileInGrouper = new File(applicationPath + newFilePath);
 
+              newFileInGrouper = fixLibraryFileIfFoundAndDifferent(newFileInGrouper, originalAppToUpgrade);
+              
               if (!newFileInGrouper.exists() || !newFileInGrouper.isFile() 
                   || (!GrouperInstallerUtils.contentEquals(newFileInPatch, newFileInGrouper)
                       //its ok if the patch is already reverted?
@@ -7587,6 +7657,8 @@ public class GrouperInstaller {
               }
               
               File newFileInGrouper = new File(applicationPath + oldFilePath);
+              
+              newFileInGrouper = fixLibraryFileIfFoundAndDifferent(newFileInGrouper, originalAppToUpgrade);
 
               if (newFileInGrouper.exists() && newFileInGrouper.isFile() 
                   && !GrouperInstallerUtils.contentEquals(oldFileInPatch, newFileInGrouper)) {
@@ -7636,6 +7708,8 @@ public class GrouperInstaller {
               continue;
             }
             
+            newFileInGrouper = fixLibraryFileIfFoundAndDifferent(newFileInGrouper, originalAppToUpgrade);
+
             if (oldFileInPatch.exists() && oldFileInPatch.isFile()) {
               System.out.println("Reverting file: " + newFileInGrouper.getAbsolutePath());
               GrouperInstallerUtils.copyFile(oldFileInPatch, newFileInGrouper, false);
@@ -7675,6 +7749,8 @@ public class GrouperInstaller {
             
             File newFileInGrouper = new File(applicationPath + oldFilePath);
             
+            newFileInGrouper = fixLibraryFileIfFoundAndDifferent(newFileInGrouper, originalAppToUpgrade);
+
             if (oldFileInPatch.exists() && oldFileInPatch.isFile()) {
               System.out.println("Reverting deleted file: " + newFileInGrouper.getAbsolutePath());
               GrouperInstallerUtils.copyFile(oldFileInPatch, newFileInGrouper, false);
@@ -7682,6 +7758,8 @@ public class GrouperInstaller {
           }
         }
       }
+      
+      //fixLibDir(patchDirToApplicationPath.get("lib"), originalAppToUpgrade);
       
       this.patchesInstalled.remove(keyBase);
       installedPatchDependencies.remove(keyBase);
@@ -7705,8 +7783,48 @@ public class GrouperInstaller {
   }
   
   /**
+   * this makes sure libs are in the right spot, though might be risky so dont do it
+   * @param libDirWithSlash
+   * @param originalAppToUpgrade
+   */
+  private void fixLibDir(String libDirWithSlash, AppToUpgrade originalAppToUpgrade) {
+    if (originalAppToUpgrade.isApiOrganized()) {
+      FilenameFilter apiFilenameFilter = new FilenameFilter() {
+        
+        public boolean accept(File dir, String name) {
+          
+          // any jars in "lib"
+          if (GrouperInstallerUtils.equals("lib", dir.getName()) && name.endsWith(".jar")) {
+            return true;
+          }
+          return false;
+        }
+      };
+      //make sure all libs have something between lib and grouper
+      for (File file : new File(libDirWithSlash).listFiles(apiFilenameFilter)) {
+        // move this to grouper dir
+        final File newFile = new File(file.getParentFile().getAbsolutePath() + File.separator + "grouper" + File.separator + file.getName());
+        GrouperInstallerUtils.fileMove(file, newFile);
+        System.out.println("Moving jar: " + file.getAbsolutePath() + " to " + newFile.getAbsolutePath());
+      }
+    } else {
+      for (File file : GrouperInstallerUtils.fileListRecursive(new File(libDirWithSlash))) {
+        // any jars not in "lib" but parent dir of dir is lib
+        if (file.getName().endsWith(".jar") && !GrouperInstallerUtils.equals("lib", file.getParentFile().getName()) && GrouperInstallerUtils.equals("lib", file.getParentFile().getParentFile().getName())) {
+          // move this to grouper dir
+          final File newFile = new File(file.getParentFile().getParentFile().getAbsolutePath() + File.separator + file.getName());
+          GrouperInstallerUtils.fileMove(file, newFile);
+          System.out.println("Moving jar: " + file.getAbsolutePath() + " to " + newFile.getAbsolutePath());
+          
+        }
+      }
+    }
+  }
+  
+  /**
    * get the patches available to apply that are not already applied
    * @param thisAppToUpgrade app to upgrade to check
+   * @param originalAppToUpgrade 
    * @return if patches were installed
    */
   private boolean downloadAndInstallPatches(AppToUpgrade thisAppToUpgrade, AppToUpgrade originalAppToUpgrade) {
@@ -7981,6 +8099,8 @@ public class GrouperInstaller {
 
               File oldFileInGrouper = new File(applicationPath + oldFilePath);
   
+              oldFileInGrouper = fixLibraryFileIfFoundAndDifferent(oldFileInGrouper, originalAppToUpgrade);
+
               if (!oldFileInPatch.exists() || !oldFileInPatch.isFile()) {
                 throw new RuntimeException("Why does file not exist or not file??? " + oldFileInPatch.getAbsolutePath());
               }
@@ -8033,6 +8153,8 @@ public class GrouperInstaller {
             newFilePath = patchFixFilePath(applicationPath, patchDir, newFilePath, originalAppToUpgrade);
 
             File oldFileInGrouper = new File(applicationPath + newFilePath);
+
+            oldFileInGrouper = fixLibraryFileIfFoundAndDifferent(oldFileInGrouper, originalAppToUpgrade);
 
             if (!newFileInPatch.isFile()) {
               continue;
@@ -8091,6 +8213,8 @@ public class GrouperInstaller {
             }
             newFilePath = patchFixFilePath(applicationPath, patchDir, newFilePath, originalAppToUpgrade);
             File oldFileInGrouper = new File(applicationPath + newFilePath);
+            oldFileInGrouper = fixLibraryFileIfFoundAndDifferent(oldFileInGrouper, originalAppToUpgrade);
+
             if (!oldFileInGrouper.exists() && !oldFileInGrouper.getParentFile().exists()) {
               GrouperInstallerUtils.mkdirs(oldFileInGrouper.getParentFile());
             }
@@ -8110,6 +8234,7 @@ public class GrouperInstaller {
             File oldFileInPatch = new File(oldDirFiles.getAbsolutePath() + File.separator + oldFilePath);
             File newFileInPatch = new File(newDirFiles.getAbsolutePath() + File.separator + oldFilePath);
             File oldFileInGrouper = new File(applicationPath + oldFilePath);
+            oldFileInGrouper = fixLibraryFileIfFoundAndDifferent(oldFileInGrouper, originalAppToUpgrade);
 
             if (oldFileInPatch.exists() && !newFileInPatch.exists() && oldFileInGrouper.exists() && oldFileInGrouper.isFile()) {
 
@@ -8121,6 +8246,8 @@ public class GrouperInstaller {
         }
       }
       
+      //fixLibDir(patchDirToApplicationPath.get("lib"), originalAppToUpgrade);
+
       this.patchesInstalled.add(keyBase);
       System.out.println("Patch successfully applied: " + keyBase);
       
@@ -8163,8 +8290,7 @@ public class GrouperInstaller {
 //        if (matcher.matches()) {
 //          jarName = matcher.group(1);
 //        }
-        jarName = GrouperInstallerUtils.suffixAfterChar(newFilePath, '/');
-        jarName = GrouperInstallerUtils.suffixAfterChar(newFilePath, '\\');
+        jarName = GrouperInstallerUtils.suffixAfterChar(newFilePath.replace("\\", "/"), '/');
 
       }
       
@@ -8765,15 +8891,15 @@ public class GrouperInstaller {
    * revert patch the client
    */
   private void patchRevertApi() {
-    this.revertPatches(AppToUpgrade.API);
+    this.revertPatches(AppToUpgrade.API, AppToUpgrade.API);
   }
 
   /**
    * revert patch the client
    */
   private void patchRevertUi() {
-    this.revertPatches(AppToUpgrade.UI);
-    boolean patchesReverted = this.revertPatches(AppToUpgrade.API);
+    this.revertPatches(AppToUpgrade.UI, AppToUpgrade.UI);
+    boolean patchesReverted = this.revertPatches(AppToUpgrade.API, AppToUpgrade.UI);
     if (patchesReverted && (this.grouperInstallerMainFunction == GrouperInstallerMainFunction.patch 
         || this.grouperInstallerMainFunction == GrouperInstallerMainFunction.upgrade)) {
       System.out.print("Since patches were reverted, you should delete files in your app server work directory,"
@@ -8786,8 +8912,8 @@ public class GrouperInstaller {
    * revert patch the client
    */
   private void patchRevertWs() {
-    this.revertPatches(AppToUpgrade.WS);
-    boolean patchesReverted = this.revertPatches(AppToUpgrade.API);
+    this.revertPatches(AppToUpgrade.WS,AppToUpgrade.WS);
+    boolean patchesReverted = this.revertPatches(AppToUpgrade.API, AppToUpgrade.WS);
     if (patchesReverted && (this.grouperInstallerMainFunction == GrouperInstallerMainFunction.patch 
         || this.grouperInstallerMainFunction == GrouperInstallerMainFunction.upgrade)) {
       System.out.print("Since patches were reverted, you should delete files in your app server work directory,"
@@ -8800,16 +8926,16 @@ public class GrouperInstaller {
    * revert patch the psp
    */
   private void patchRevertPsp() {
-    this.revertPatches(AppToUpgrade.PSP);
-    this.revertPatches(AppToUpgrade.API);
+    this.revertPatches(AppToUpgrade.PSP, AppToUpgrade.PSP);
+    this.revertPatches(AppToUpgrade.API, AppToUpgrade.PSP);
   }
 
   /**
    * revert patch the pspng
    */
   private void patchRevertPspng() {
-    this.revertPatches(AppToUpgrade.PSPNG);
-    this.revertPatches(AppToUpgrade.API);
+    this.revertPatches(AppToUpgrade.PSPNG, AppToUpgrade.PSPNG);
+    this.revertPatches(AppToUpgrade.API, AppToUpgrade.PSPNG);
   }
 
   /**
@@ -9166,7 +9292,58 @@ public class GrouperInstaller {
     }
     return result;
   }
-  
+
+  /**
+   * if file is there, return it.  if not a jar, return original
+   * find a library file on lib dir by lib name, if there return it
+   * otherwise just return the original file name.  fix the name if not correct
+   * @param originalThoughtLocation 
+   * @param originalAppToUpgrade
+   * @return the file or null if not exception if not found
+   */
+  private File fixLibraryFileIfFoundAndDifferent(File originalThoughtLocation, AppToUpgrade originalAppToUpgrade) {
+    
+    if (originalThoughtLocation == null || (originalThoughtLocation.exists() && originalThoughtLocation.isFile())) {
+      return originalThoughtLocation;
+    }
+    
+    if (!originalThoughtLocation.getAbsolutePath().endsWith(".jar")) {
+      return originalThoughtLocation;
+    }
+    
+    File foundLibraryFile = findLibraryFile(originalThoughtLocation.getName(), false);
+    if (foundLibraryFile != null && foundLibraryFile.exists() && foundLibraryFile.isFile()) {
+      return foundLibraryFile;
+    }
+    
+    if (!originalAppToUpgrade.isApiOrganized()) {
+      
+      // is in WEB-INF/lib/something.jar
+      if (GrouperInstallerUtils.equals("lib", originalThoughtLocation.getParentFile().getName())) {
+        return originalThoughtLocation;
+      }
+      
+      if (GrouperInstallerUtils.equals("lib", originalThoughtLocation.getParentFile().getParentFile().getName())) {
+        return new File(originalThoughtLocation.getParentFile().getParentFile().getAbsoluteFile() + File.separator + originalThoughtLocation.getName());
+      }
+      
+      return originalThoughtLocation;
+    }
+    
+    //is api
+    if (!GrouperInstallerUtils.equals("lib", originalThoughtLocation.getParentFile().getName())
+        && GrouperInstallerUtils.equals("lib", originalThoughtLocation.getParentFile().getParentFile().getName())) {
+      return originalThoughtLocation;
+    }
+      
+    if (GrouperInstallerUtils.equals("lib", originalThoughtLocation.getParentFile().getName())) {
+      return new File(originalThoughtLocation.getParentFile().getAbsoluteFile() + File.separator + "grouper" + File.separator + originalThoughtLocation.getName());
+    }
+    
+    // not sure what to do here
+    return originalThoughtLocation;
+  }
+
   /**
    * find a library file on lib dir by libName
    * @param libName lib name of file

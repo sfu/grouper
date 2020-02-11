@@ -87,6 +87,8 @@ import edu.internet2.middleware.grouper.app.reports.GrouperReportSettings;
 import edu.internet2.middleware.grouper.app.upgradeTasks.UpgradeTasksJob;
 import edu.internet2.middleware.grouper.app.workflow.GrouperWorkflowInstanceAttributeNames;
 import edu.internet2.middleware.grouper.app.workflow.GrouperWorkflowSettings;
+import edu.internet2.middleware.grouper.app.usdu.UsduAttributeNames;
+import edu.internet2.middleware.grouper.app.usdu.UsduSettings;
 import edu.internet2.middleware.grouper.attr.AttributeDef;
 import edu.internet2.middleware.grouper.attr.AttributeDefName;
 import edu.internet2.middleware.grouper.attr.AttributeDefSave;
@@ -1136,6 +1138,66 @@ public class GrouperCheckConfig {
 
       }
       
+      // https://spaces.at.internet2.edu/display/Grouper/USDU+delete+subjects+after+unresolvable+for+X+days
+      // add usdu attributes
+      {
+        String usduRootStemName = UsduSettings.usduStemName();
+        
+        Stem usduStem = StemFinder.findByName(grouperSession, usduRootStemName, false);
+        if (usduStem == null) {
+          usduStem = new StemSave(grouperSession).assignCreateParentStemsIfNotExist(true)
+            .assignDescription("folder for built in Grouper usdu objects").assignName(usduRootStemName)
+            .save();
+        }
+
+        //see if attributeDef is there
+        String subjectResolutionTypeDefName = usduRootStemName + ":" + UsduAttributeNames.SUBJECT_RESOLUTION_DEF;
+        AttributeDef subjectResolutionType = GrouperDAOFactory.getFactory().getAttributeDef().findByNameSecure(
+            subjectResolutionTypeDefName, false, new QueryOptions().secondLevelCache(false));
+        if (subjectResolutionType == null) {
+          subjectResolutionType = usduStem.addChildAttributeDef(UsduAttributeNames.SUBJECT_RESOLUTION_DEF, AttributeDefType.type);
+          subjectResolutionType.setAssignToMember(true);
+          subjectResolutionType.store();
+        }
+        
+        //add a name
+        AttributeDefName attribute = checkAttribute(usduStem, subjectResolutionType, UsduAttributeNames.SUBJECT_RESOLUTION_NAME, "has subject resolution attributes", wasInCheckConfig);
+        
+        //lets add some rule attributes
+        String subjectResolutionAttrDefName = usduRootStemName + ":" + UsduAttributeNames.SUBJECT_RESOLUTION_VALUE_DEF;
+        AttributeDef subjectResolutionAttrType = GrouperDAOFactory.getFactory().getAttributeDef().findByNameSecure(  
+            subjectResolutionAttrDefName, false, new QueryOptions().secondLevelCache(false));
+        if (subjectResolutionAttrType == null) {
+          subjectResolutionAttrType = usduStem.addChildAttributeDef(UsduAttributeNames.SUBJECT_RESOLUTION_VALUE_DEF, AttributeDefType.attr);
+          subjectResolutionAttrType.setAssignToMemberAssn(true);
+          subjectResolutionAttrType.setValueType(AttributeDefValueType.string);
+          subjectResolutionAttrType.store();
+        }
+        
+        //the attributes can only be assigned to the type def
+        // try an attribute def dependent on an attribute def name
+        subjectResolutionAttrType.getAttributeDefScopeDelegate().assignOwnerNameEquals(attribute.getName());
+        
+        checkAttribute(usduStem, subjectResolutionAttrType, UsduAttributeNames.SUBJECT_RESOLUTION_RESOLVABLE,
+            "false if this subject is currently unresolvable (as of last check)." + 
+            "If the subject is resolvable, remove subjectResolutionMarker and metadata", wasInCheckConfig);
+        
+        checkAttribute(usduStem, subjectResolutionAttrType, UsduAttributeNames.SUBJECT_RESOLUTION_DATE_LAST_RESOLVED, 
+            "yyyy/mm/dd If this subject has a date and is unresolveable, leave it. if this subject doesnt have a date, and is unresolvable, then set to currentDate.", wasInCheckConfig);
+        
+        checkAttribute(usduStem, subjectResolutionAttrType, UsduAttributeNames.SUBJECT_RESOLUTION_DAYS_UNRESOLVED, 
+            "the number of days from current date minus dateLastResolved.", wasInCheckConfig);
+        
+        checkAttribute(usduStem, subjectResolutionAttrType, UsduAttributeNames.SUBJECT_RESOLUTION_LAST_CHECKED, 
+            "yyyy/mm/dd the date this subject was last checked. When the USDU runs, if this subject is current unresolvable, then set to currentDate", wasInCheckConfig);
+        
+        checkAttribute(usduStem, subjectResolutionAttrType, UsduAttributeNames.SUBJECT_RESOLUTION_DELETED,
+            "true when all the memberships are removed", wasInCheckConfig);
+        
+        checkAttribute(usduStem, subjectResolutionAttrType, UsduAttributeNames.SUBJECT_RESOLUTION_DELETE_DATE,
+            "yyyy/mm/dd when all the memberships are removed", wasInCheckConfig);
+      }
+      
       
     } catch (SessionException se) {
       throw new RuntimeException(se);
@@ -1804,13 +1866,14 @@ public class GrouperCheckConfig {
     checkJar("commons-logging-1.2.jar", 61829, "org.apache.commons.logging.impl.AvalonLogger", "1.2");
     checkJar("commons-math-1.2.jar", 338488, "org.apache.commons.math.MaxIterationsExceededException", "1.2");
     checkJar("commons-validator-1.6.jar", 186077, "org.apache.commons.validator.CreditCardValidator", "1.6");
+    checkJar("commons-vfs2-2.4.1.jar", 508048, "org.apache.commons.vfs2.cache.NullFilesCache", "2.4.1");
     checkJar("cron-parser-core-3.4.jar", 33945, "net.redhogs.cronparser.DescriptionTypeEnum", "null");
     checkJar("ddlutils-1.0.jar", 353473, "org.apache.ddlutils.DatabaseOperationException", "1.0");
     checkJar("dom4j-2.1.1.jar", 323600, "org.dom4j.Attribute", "null");
     checkJar("ehcache-core-2.4.8.jar", 1030367, "net.sf.ehcache.terracotta.TerracottaClientRejoinListener", "null");
     checkJar("ezmorph-1.0.6.jar", 86487, "net.sf.ezmorph.MorphException", "null");
     checkJar("groovy-all-2.5.0-beta-2.jar", 7715312, "groovy.beans.Bindable", "2.5.0-beta-2");
-    checkJar("grouperClient.jar", GrouperUtil.toSet(4468322L, 4397537L, 4422891L, 4423489L, 4423587L, 4423679L, 4475423L, 4469727L, 4470134L, 4471310L, 4431078L, 4448499L, 4452443L, 4449157L), "edu.internet2.middleware.grouperClient.ClientOperation", "2.5.0");
+    checkJar("grouperClient.jar", GrouperUtil.toSet(4468322L, 4397537L, 4422891L, 4423489L, 4423587L, 4423679L, 4475423L, 4469727L, 4470134L, 4471310L, 4431078L, 4448499L, 4452443L, 4449157L, 4449953L, 4449940L, 4456413L, 4557790L), "edu.internet2.middleware.grouperClient.ClientOperation", "2.4.0");
     checkJar("hibernate-c3p0-5.0.12.Final.jar", 11606, "org.hibernate.c3p0.internal.C3P0MessageLogger", "5.0.12.Final");
     checkJar("hibernate-commons-annotations-5.0.1.Final.jar", 75288, "org.hibernate.annotations.common.Version", "5.0.1.Final");
     checkJar("hibernate-core-5.0.12.Final.jar", 5619332, "org.hibernate.SessionException", "5.0.12.Final");
@@ -1826,6 +1889,7 @@ public class GrouperCheckConfig {
     checkJar("jboss-logging-3.3.1.Final.jar", 66023, "org.jboss.logging.Field", "3.3.1.Final");
     checkJar("jline-2.14.5.jar", 268597, "jline.AnsiWindowsTerminal", "null");
     checkJar("joda-time-2.9.9.jar", 634048, "org.joda.time.base.AbstractDateTime", "2.9.9");
+    checkJar("jsch-0.1.55.jar", 282591, "com.jcraft.jsch.Identity", "null");
     checkJar("json-lib-2.4-jdk15.jar", 159123, "net.sf.json.JSON", "null");
     checkJar("jsoup-1.12.1.jar", 397112, "org.jsoup.SerializationException", "null");
     checkJar("jta-1.1.jar", 15071, "javax.transaction.HeuristicCommitException", "null");

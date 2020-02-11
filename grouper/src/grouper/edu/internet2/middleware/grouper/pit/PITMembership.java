@@ -17,11 +17,14 @@ package edu.internet2.middleware.grouper.pit;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import org.apache.commons.collections.keyvalue.MultiKey;
 
 import edu.internet2.middleware.grouper.Field;
 import edu.internet2.middleware.grouper.FieldFinder;
@@ -207,6 +210,23 @@ public class PITMembership extends GrouperPIT implements Hib3GrouperVersioned {
   /** whether there will be notifications for roles with permission changes when this object is saved or updated */ 
   private boolean notificationsForRolesWithPermissionChangesOnSaveOrUpdate = false;
   
+  /** whether there will be notifications for subjects with permission changes when this object is saved or updated */ 
+  private boolean notificationsForSubjectsWithPermissionChangesOnSaveOrUpdate = false;
+  
+  /**
+   * @return boolean
+   */
+  public boolean getNotificationsForSubjectsWithPermissionChangesOnSaveOrUpdate() {
+    return notificationsForSubjectsWithPermissionChangesOnSaveOrUpdate;
+  }
+  
+  /**
+   * @param notificationsForSubjectsWithPermissionChangesOnSaveOrUpdate
+   */
+  public void setNotificationsForSubjectsWithPermissionChangesOnSaveOrUpdate(boolean notificationsForSubjectsWithPermissionChangesOnSaveOrUpdate) {
+    this.notificationsForSubjectsWithPermissionChangesOnSaveOrUpdate = notificationsForSubjectsWithPermissionChangesOnSaveOrUpdate;
+  }
+  
   /**
    * @return boolean
    */
@@ -302,14 +322,24 @@ public class PITMembership extends GrouperPIT implements Hib3GrouperVersioned {
         assignment.setEndTimeDb(this.getStartTimeDb());
         assignment.setActiveDb("F");
         assignment.setContextId(this.getContextId());
+        assignment.setSaveChangeLogUpdates(saveChangeLogUpdates);
         assignment.update();
+        if (!saveChangeLogUpdates) {
+          changeLogUpdates.addAll(assignment.getChangeLogUpdates());
+          assignment.clearChangeLogUpdates();
+        }
         
         assignmentCopy.setId(GrouperUuid.getUuid());
         assignmentCopy.setOwnerMembershipId(this.getId());
         assignmentCopy.setStartTimeDb(this.getStartTimeDb());
         assignmentCopy.setContextId(this.getContextId());
         assignmentCopy.setHibernateVersionNumber(-1L);
+        assignmentCopy.setSaveChangeLogUpdates(saveChangeLogUpdates);
         assignmentCopy.save();
+        if (!saveChangeLogUpdates) {
+          changeLogUpdates.addAll(assignmentCopy.getChangeLogUpdates());
+          assignmentCopy.clearChangeLogUpdates();
+        }
       }
     }
   }
@@ -629,6 +659,49 @@ public class PITMembership extends GrouperPIT implements Hib3GrouperVersioned {
       }
     }
     
+    if (!this.isActive() && this.dbVersion().isActive() && this.getNotificationsForSubjectsWithPermissionChangesOnSaveOrUpdate()) {
+      Set<ChangeLogEntry> changeLogEntryBatch = new LinkedHashSet<ChangeLogEntry>();
+      int batchSize = GrouperConfig.getHibernatePropertyInt("hibernate.jdbc.batch_size", 200);
+      if (batchSize <= 0) {
+        batchSize = 1;
+      }
+      
+      Set<MultiKey> processed = new HashSet<MultiKey>();
+
+      Set<PITPermissionAllView> perms = GrouperDAOFactory.getFactory().getPITPermissionAllView().findNewOrDeletedFlatPermissionsAfterObjectAddOrDelete(this);
+
+      for (PITPermissionAllView perm : perms) {
+        MultiKey key = new MultiKey(perm.getRoleId(), perm.getAttributeDefNameId(), perm.getActionId(), perm.getMemberId());
+        if (processed.add(key)) {
+          ChangeLogEntry changeLogEntry = new ChangeLogEntry(false, ChangeLogTypeBuiltin.PERMISSION_CHANGE_ON_SUBJECT,
+              ChangeLogLabels.PERMISSION_CHANGE_ON_SUBJECT.subjectId.name(), perm.getSubjectId(),
+              ChangeLogLabels.PERMISSION_CHANGE_ON_SUBJECT.subjectSourceId.name(), perm.getSubjectSourceId(),
+              ChangeLogLabels.PERMISSION_CHANGE_ON_SUBJECT.memberId.name(), perm.getMemberSourceId(),
+              ChangeLogLabels.PERMISSION_CHANGE_ON_SUBJECT.roleId.name(), perm.getRoleSourceId(),
+              ChangeLogLabels.PERMISSION_CHANGE_ON_SUBJECT.roleName.name(), perm.getRoleName());
+              
+          changeLogEntry.setContextId(this.getContextId());
+          changeLogEntry.setCreatedOnDb(this.getStartTimeDb());
+          
+          if (saveChangeLogUpdates) {
+            changeLogEntryBatch.add(changeLogEntry);
+            if (changeLogEntryBatch.size() % batchSize == 0) {
+              GrouperDAOFactory.getFactory().getChangeLogEntry().saveBatch(changeLogEntryBatch, false);
+              changeLogEntryBatch.clear();
+            }
+          } else {
+            changeLogUpdates.add(changeLogEntry);
+          }
+        }
+      }
+      
+      // make sure all changes get made      
+      if (changeLogEntryBatch.size() > 0) {
+        GrouperDAOFactory.getFactory().getChangeLogEntry().saveBatch(changeLogEntryBatch, false);
+        changeLogEntryBatch.clear();
+      }
+    }
+    
     // add change log entry for flat memberships
     if (!this.isActive() && this.dbVersion().isActive() && (this.getFlatMembershipNotificationsOnSaveOrUpdate() || this.getFlatPrivilegeNotificationsOnSaveOrUpdate())) {
       Set<ChangeLogEntry> changeLogEntryBatch = new LinkedHashSet<ChangeLogEntry>();
@@ -793,6 +866,49 @@ public class PITMembership extends GrouperPIT implements Hib3GrouperVersioned {
       }
     }
     
+    if (this.isActive() && this.getNotificationsForSubjectsWithPermissionChangesOnSaveOrUpdate()) {
+      Set<ChangeLogEntry> changeLogEntryBatch = new LinkedHashSet<ChangeLogEntry>();
+      int batchSize = GrouperConfig.getHibernatePropertyInt("hibernate.jdbc.batch_size", 200);
+      if (batchSize <= 0) {
+        batchSize = 1;
+      }
+      
+      Set<MultiKey> processed = new HashSet<MultiKey>();
+
+      Set<PITPermissionAllView> perms = GrouperDAOFactory.getFactory().getPITPermissionAllView().findNewOrDeletedFlatPermissionsAfterObjectAddOrDelete(this);
+
+      for (PITPermissionAllView perm : perms) {
+        MultiKey key = new MultiKey(perm.getRoleId(), perm.getAttributeDefNameId(), perm.getActionId(), perm.getMemberId());
+        if (processed.add(key)) {
+          ChangeLogEntry changeLogEntry = new ChangeLogEntry(false, ChangeLogTypeBuiltin.PERMISSION_CHANGE_ON_SUBJECT,
+              ChangeLogLabels.PERMISSION_CHANGE_ON_SUBJECT.subjectId.name(), perm.getSubjectId(),
+              ChangeLogLabels.PERMISSION_CHANGE_ON_SUBJECT.subjectSourceId.name(), perm.getSubjectSourceId(),
+              ChangeLogLabels.PERMISSION_CHANGE_ON_SUBJECT.memberId.name(), perm.getMemberSourceId(),
+              ChangeLogLabels.PERMISSION_CHANGE_ON_SUBJECT.roleId.name(), perm.getRoleSourceId(),
+              ChangeLogLabels.PERMISSION_CHANGE_ON_SUBJECT.roleName.name(), perm.getRoleName());
+              
+          changeLogEntry.setContextId(this.getContextId());
+          changeLogEntry.setCreatedOnDb(this.getStartTimeDb());
+          
+          if (saveChangeLogUpdates) {
+            changeLogEntryBatch.add(changeLogEntry);
+            if (changeLogEntryBatch.size() % batchSize == 0) {
+              GrouperDAOFactory.getFactory().getChangeLogEntry().saveBatch(changeLogEntryBatch, false);
+              changeLogEntryBatch.clear();
+            }
+          } else {
+            changeLogUpdates.add(changeLogEntry);
+          }
+        }
+      }
+      
+      // make sure all changes get made      
+      if (changeLogEntryBatch.size() > 0) {
+        GrouperDAOFactory.getFactory().getChangeLogEntry().saveBatch(changeLogEntryBatch, false);
+        changeLogEntryBatch.clear();
+      }
+    }
+    
     // if the member is a group, add the PIT immediate group set.
     if (this.isActive() && this.getMember().getSubjectTypeId().equals("group")) {
       PITField pitField = pitFieldCache.get(this.getFieldId());
@@ -857,7 +973,14 @@ public class PITMembership extends GrouperPIT implements Hib3GrouperVersioned {
       pitImmediateGroupSet.setContextId(this.getContextId());
       pitImmediateGroupSet.setFlatMembershipNotificationsOnSaveOrUpdate(this.getFlatMembershipNotificationsOnSaveOrUpdate());
       pitImmediateGroupSet.setFlatPrivilegeNotificationsOnSaveOrUpdate(this.getFlatPrivilegeNotificationsOnSaveOrUpdate());
+      pitImmediateGroupSet.setNotificationsForSubjectsWithPermissionChangesOnSaveOrUpdate(this.getNotificationsForSubjectsWithPermissionChangesOnSaveOrUpdate());
+      pitImmediateGroupSet.setSaveChangeLogUpdates(saveChangeLogUpdates);
       pitImmediateGroupSet.saveOrUpdate();
+      
+      if (!saveChangeLogUpdates) {
+        changeLogUpdates.addAll(pitImmediateGroupSet.getChangeLogUpdates());
+        pitImmediateGroupSet.clearChangeLogUpdates();
+      }
     }
     
     super.onPostSave(hibernateSession);
@@ -909,7 +1032,14 @@ public class PITMembership extends GrouperPIT implements Hib3GrouperVersioned {
       pitImmediateGroupSet.setContextId(this.getContextId());
       pitImmediateGroupSet.setFlatMembershipNotificationsOnSaveOrUpdate(this.getFlatMembershipNotificationsOnSaveOrUpdate());
       pitImmediateGroupSet.setFlatPrivilegeNotificationsOnSaveOrUpdate(this.getFlatPrivilegeNotificationsOnSaveOrUpdate());
+      pitImmediateGroupSet.setNotificationsForSubjectsWithPermissionChangesOnSaveOrUpdate(this.getNotificationsForSubjectsWithPermissionChangesOnSaveOrUpdate());
+      pitImmediateGroupSet.setSaveChangeLogUpdates(saveChangeLogUpdates);
       pitImmediateGroupSet.saveOrUpdate();
+      
+      if (!saveChangeLogUpdates) {
+        changeLogUpdates.addAll(pitImmediateGroupSet.getChangeLogUpdates());
+        pitImmediateGroupSet.clearChangeLogUpdates();
+      }
     }
     
     super.onPostUpdate(hibernateSession);

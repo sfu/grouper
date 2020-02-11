@@ -1691,6 +1691,12 @@ public class GrouperUtil {
 	             return true;
 	           }
 	         }
+           if ("source".equals(name) && source instanceof Subject) {
+             return true;
+           }
+	         if ("subject".equals(name) && source != null && source.getClass().getName().equals("edu.internet2.middleware.grouper.grouperUi.beans.api.GuiSubject")) {
+	           return true;
+	         }
            return value == null;
 	       }
 	    });
@@ -6275,7 +6281,7 @@ public class GrouperUtil {
   }
 
   /**
-   * Convert a timestamp into a string: yyyy/MM/dd HH:mm:ss.SSS
+   * Convert a timestamp into a string: yyyy_MM_dd__HH_mm_ss_SSS
    * @param timestamp
    * @return the string representation
    */
