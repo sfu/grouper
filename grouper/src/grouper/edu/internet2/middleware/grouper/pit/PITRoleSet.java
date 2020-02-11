@@ -15,8 +15,13 @@
  */
 package edu.internet2.middleware.grouper.pit;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
+
+import org.apache.commons.collections.keyvalue.MultiKey;
 
 import edu.internet2.middleware.grouper.GrouperAPI;
 import edu.internet2.middleware.grouper.cfg.GrouperConfig;
@@ -124,6 +129,32 @@ public class PITRoleSet extends GrouperPIT implements Hib3GrouperVersioned {
   /** sourceId */
   private String sourceId;
   
+  private boolean saveChangeLogUpdates = true;
+  
+  /**
+   * @param saveChangeLogUpdates the saveChangeLogUpdates to set
+   */
+  public void setSaveChangeLogUpdates(boolean saveChangeLogUpdates) {
+    this.saveChangeLogUpdates = saveChangeLogUpdates;
+  }
+  
+  private List<ChangeLogEntry> changeLogUpdates = new ArrayList<ChangeLogEntry>();
+  
+  /**
+   * @return changelog entries
+   */
+  public List<ChangeLogEntry> getChangeLogUpdates() {
+    return changeLogUpdates;
+  }
+  
+  
+  /**
+   * 
+   */
+  public void clearChangeLogUpdates() {
+    changeLogUpdates.clear();
+  }
+  
   /**
    * @return source id
    */
@@ -159,6 +190,23 @@ public class PITRoleSet extends GrouperPIT implements Hib3GrouperVersioned {
    */
   public void setNotificationsForRolesWithPermissionChangesOnSaveOrUpdate(boolean notificationsForRolesWithPermissionChangesOnSaveOrUpdate) {
     this.notificationsForRolesWithPermissionChangesOnSaveOrUpdate = notificationsForRolesWithPermissionChangesOnSaveOrUpdate;
+  }
+  
+  /** whether there will be notifications for subjects with permission changes when this object is saved or updated */ 
+  private boolean notificationsForSubjectsWithPermissionChangesOnSaveOrUpdate = false;
+  
+  /**
+   * @return boolean
+   */
+  public boolean getNotificationsForSubjectsWithPermissionChangesOnSaveOrUpdate() {
+    return notificationsForSubjectsWithPermissionChangesOnSaveOrUpdate;
+  }
+  
+  /**
+   * @param notificationsForSubjectsWithPermissionChangesOnSaveOrUpdate
+   */
+  public void setNotificationsForSubjectsWithPermissionChangesOnSaveOrUpdate(boolean notificationsForSubjectsWithPermissionChangesOnSaveOrUpdate) {
+    this.notificationsForSubjectsWithPermissionChangesOnSaveOrUpdate = notificationsForSubjectsWithPermissionChangesOnSaveOrUpdate;
   }
   
   /**
@@ -293,10 +341,58 @@ public class PITRoleSet extends GrouperPIT implements Hib3GrouperVersioned {
             
         changeLogEntry.setContextId(this.getContextId());
         changeLogEntry.setCreatedOnDb(this.getStartTimeDb());
-        changeLogEntryBatch.add(changeLogEntry);
-        if (changeLogEntryBatch.size() % batchSize == 0) {
-          GrouperDAOFactory.getFactory().getChangeLogEntry().saveBatch(changeLogEntryBatch, false);
-          changeLogEntryBatch.clear();
+        
+        if (saveChangeLogUpdates) {
+          changeLogEntryBatch.add(changeLogEntry);
+          if (changeLogEntryBatch.size() % batchSize == 0) {
+            GrouperDAOFactory.getFactory().getChangeLogEntry().saveBatch(changeLogEntryBatch, false);
+            changeLogEntryBatch.clear();
+          }
+        } else {
+          changeLogUpdates.add(changeLogEntry);
+        }
+      }
+      
+      // make sure all changes get made      
+      if (changeLogEntryBatch.size() > 0) {
+        GrouperDAOFactory.getFactory().getChangeLogEntry().saveBatch(changeLogEntryBatch, false);
+        changeLogEntryBatch.clear();
+      }
+    }
+    
+    if (!this.isActive() && this.dbVersion().isActive() && this.getNotificationsForSubjectsWithPermissionChangesOnSaveOrUpdate()) {
+      Set<ChangeLogEntry> changeLogEntryBatch = new LinkedHashSet<ChangeLogEntry>();
+      int batchSize = GrouperConfig.getHibernatePropertyInt("hibernate.jdbc.batch_size", 200);
+      if (batchSize <= 0) {
+        batchSize = 1;
+      }
+      
+      Set<MultiKey> processed = new HashSet<MultiKey>();
+
+      Set<PITPermissionAllView> perms = GrouperDAOFactory.getFactory().getPITPermissionAllView().findNewOrDeletedFlatPermissionsAfterObjectAddOrDelete(this);
+
+      for (PITPermissionAllView perm : perms) {
+        MultiKey key = new MultiKey(perm.getRoleId(), perm.getAttributeDefNameId(), perm.getActionId(), perm.getMemberId());
+        if (processed.add(key)) {
+          ChangeLogEntry changeLogEntry = new ChangeLogEntry(false, ChangeLogTypeBuiltin.PERMISSION_CHANGE_ON_SUBJECT,
+              ChangeLogLabels.PERMISSION_CHANGE_ON_SUBJECT.subjectId.name(), perm.getSubjectId(),
+              ChangeLogLabels.PERMISSION_CHANGE_ON_SUBJECT.subjectSourceId.name(), perm.getSubjectSourceId(),
+              ChangeLogLabels.PERMISSION_CHANGE_ON_SUBJECT.memberId.name(), perm.getMemberSourceId(),
+              ChangeLogLabels.PERMISSION_CHANGE_ON_SUBJECT.roleId.name(), perm.getRoleSourceId(),
+              ChangeLogLabels.PERMISSION_CHANGE_ON_SUBJECT.roleName.name(), perm.getRoleName());
+              
+          changeLogEntry.setContextId(this.getContextId());
+          changeLogEntry.setCreatedOnDb(this.getStartTimeDb());
+          
+          if (saveChangeLogUpdates) {
+            changeLogEntryBatch.add(changeLogEntry);
+            if (changeLogEntryBatch.size() % batchSize == 0) {
+              GrouperDAOFactory.getFactory().getChangeLogEntry().saveBatch(changeLogEntryBatch, false);
+              changeLogEntryBatch.clear();
+            }
+          } else {
+            changeLogUpdates.add(changeLogEntry);
+          }
         }
       }
       
@@ -331,10 +427,58 @@ public class PITRoleSet extends GrouperPIT implements Hib3GrouperVersioned {
             
         changeLogEntry.setContextId(this.getContextId());
         changeLogEntry.setCreatedOnDb(this.getStartTimeDb());
-        changeLogEntryBatch.add(changeLogEntry);
-        if (changeLogEntryBatch.size() % batchSize == 0) {
-          GrouperDAOFactory.getFactory().getChangeLogEntry().saveBatch(changeLogEntryBatch, false);
-          changeLogEntryBatch.clear();
+        
+        if (saveChangeLogUpdates) {
+          changeLogEntryBatch.add(changeLogEntry);
+          if (changeLogEntryBatch.size() % batchSize == 0) {
+            GrouperDAOFactory.getFactory().getChangeLogEntry().saveBatch(changeLogEntryBatch, false);
+            changeLogEntryBatch.clear();
+          }
+        } else {
+          changeLogUpdates.add(changeLogEntry);
+        }
+      }
+      
+      // make sure all changes get made      
+      if (changeLogEntryBatch.size() > 0) {
+        GrouperDAOFactory.getFactory().getChangeLogEntry().saveBatch(changeLogEntryBatch, false);
+        changeLogEntryBatch.clear();
+      }
+    }
+    
+    if (this.isActive() && this.getNotificationsForSubjectsWithPermissionChangesOnSaveOrUpdate()) {
+      Set<ChangeLogEntry> changeLogEntryBatch = new LinkedHashSet<ChangeLogEntry>();
+      int batchSize = GrouperConfig.getHibernatePropertyInt("hibernate.jdbc.batch_size", 200);
+      if (batchSize <= 0) {
+        batchSize = 1;
+      }
+      
+      Set<MultiKey> processed = new HashSet<MultiKey>();
+
+      Set<PITPermissionAllView> perms = GrouperDAOFactory.getFactory().getPITPermissionAllView().findNewOrDeletedFlatPermissionsAfterObjectAddOrDelete(this);
+
+      for (PITPermissionAllView perm : perms) {
+        MultiKey key = new MultiKey(perm.getRoleId(), perm.getAttributeDefNameId(), perm.getActionId(), perm.getMemberId());
+        if (processed.add(key)) {
+          ChangeLogEntry changeLogEntry = new ChangeLogEntry(false, ChangeLogTypeBuiltin.PERMISSION_CHANGE_ON_SUBJECT,
+              ChangeLogLabels.PERMISSION_CHANGE_ON_SUBJECT.subjectId.name(), perm.getSubjectId(),
+              ChangeLogLabels.PERMISSION_CHANGE_ON_SUBJECT.subjectSourceId.name(), perm.getSubjectSourceId(),
+              ChangeLogLabels.PERMISSION_CHANGE_ON_SUBJECT.memberId.name(), perm.getMemberSourceId(),
+              ChangeLogLabels.PERMISSION_CHANGE_ON_SUBJECT.roleId.name(), perm.getRoleSourceId(),
+              ChangeLogLabels.PERMISSION_CHANGE_ON_SUBJECT.roleName.name(), perm.getRoleName());
+              
+          changeLogEntry.setContextId(this.getContextId());
+          changeLogEntry.setCreatedOnDb(this.getStartTimeDb());
+          
+          if (saveChangeLogUpdates) {
+            changeLogEntryBatch.add(changeLogEntry);
+            if (changeLogEntryBatch.size() % batchSize == 0) {
+              GrouperDAOFactory.getFactory().getChangeLogEntry().saveBatch(changeLogEntryBatch, false);
+              changeLogEntryBatch.clear();
+            }
+          } else {
+            changeLogUpdates.add(changeLogEntry);
+          }
         }
       }
       

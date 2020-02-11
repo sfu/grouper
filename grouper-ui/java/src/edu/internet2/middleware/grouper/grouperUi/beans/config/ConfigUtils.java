@@ -92,7 +92,7 @@ public class ConfigUtils {
     if (key != null) {
       String lowerKey = key.toLowerCase();
 
-      if (lowerKey.contains("pass") || lowerKey.contains("secret")) {
+      if (lowerKey.contains("pass") || lowerKey.contains("secret") || lowerKey.contains("private")) {
         return true;
       }
     
@@ -198,7 +198,6 @@ public class ConfigUtils {
         configurationContainer.setCurrentConfigFileName(current.getConfigFileName());
         
         message.append(TextContainer.retrieveFromRequest().getText().get("configurationFilesPropertyExistsInAnother")).append("<br />");
-        
       }
       
     }

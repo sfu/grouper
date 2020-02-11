@@ -36,6 +36,13 @@ import edu.internet2.middleware.subject.provider.SubjectStatusConfig;
 public class LazySource implements Source, Serializable {
 
   /**
+   * @see edu.internet2.middleware.subject.Source#retrieveAllSubjectIds()
+   */
+  public Set<String> retrieveAllSubjectIds() {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
    * @see Source#getSubjectStatusConfig()
    */
   @Override

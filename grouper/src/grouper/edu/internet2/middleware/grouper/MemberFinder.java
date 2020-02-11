@@ -31,25 +31,35 @@
 */
 
 package edu.internet2.middleware.grouper;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.collections.keyvalue.MultiKey;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.logging.Log;
+import org.hibernate.criterion.Criterion;
+import org.hibernate.criterion.Restrictions;
 
+import edu.internet2.middleware.grouper.attr.AttributeDefName;
+import edu.internet2.middleware.grouper.attr.finder.AttributeDefNameFinder;
 import edu.internet2.middleware.grouper.cache.GrouperCache;
 import edu.internet2.middleware.grouper.cfg.GrouperConfig;
 import edu.internet2.middleware.grouper.exception.GroupNotFoundException;
 import edu.internet2.middleware.grouper.exception.GrouperException;
 import edu.internet2.middleware.grouper.exception.InsufficientPrivilegeException;
 import edu.internet2.middleware.grouper.exception.MemberNotFoundException;
+import edu.internet2.middleware.grouper.group.TypeOfGroup;
 import edu.internet2.middleware.grouper.hibernate.GrouperTransaction;
 import edu.internet2.middleware.grouper.hibernate.GrouperTransactionHandler;
 import edu.internet2.middleware.grouper.hibernate.GrouperTransactionType;
+import edu.internet2.middleware.grouper.hibernate.HibUtils;
+import edu.internet2.middleware.grouper.hibernate.HibernateSession;
 import edu.internet2.middleware.grouper.hooks.logic.HookVeto;
 import edu.internet2.middleware.grouper.internal.dao.GrouperDAOException;
 import edu.internet2.middleware.grouper.internal.dao.QueryOptions;
@@ -58,12 +68,23 @@ import edu.internet2.middleware.grouper.member.SearchStringEnum;
 import edu.internet2.middleware.grouper.member.SortStringEnum;
 import edu.internet2.middleware.grouper.membership.MembershipType;
 import edu.internet2.middleware.grouper.misc.GrouperDAOFactory;
+import edu.internet2.middleware.grouper.pit.PITAttributeAssign;
+import edu.internet2.middleware.grouper.pit.PITAttributeAssignAction;
+import edu.internet2.middleware.grouper.pit.PITAttributeDef;
+import edu.internet2.middleware.grouper.pit.PITAttributeDefName;
+import edu.internet2.middleware.grouper.pit.PITGroup;
+import edu.internet2.middleware.grouper.pit.PITMember;
+import edu.internet2.middleware.grouper.pit.PITMembership;
+import edu.internet2.middleware.grouper.pit.PITStem;
+import edu.internet2.middleware.grouper.privs.AccessPrivilege;
+import edu.internet2.middleware.grouper.privs.Privilege;
 import edu.internet2.middleware.grouper.privs.PrivilegeHelper;
 import edu.internet2.middleware.grouper.subj.LazySubject;
 import edu.internet2.middleware.grouper.subj.UnresolvableSubject;
 import edu.internet2.middleware.grouper.util.GrouperUtil;
 import edu.internet2.middleware.subject.Source;
 import edu.internet2.middleware.subject.Subject;
+import edu.internet2.middleware.subject.SubjectNotUniqueException;
 
 /**
  * Find members within the Groups Registry.
@@ -73,6 +94,209 @@ import edu.internet2.middleware.subject.Subject;
  */
 public class MemberFinder {
 	
+  /**
+   * find members that have this attribute def name id, note could be an assignment on an assignment
+   */
+  private String attributeDefNameId;
+
+  /**
+   * find members that have this attribute def name id, note could be an assignment on an assignment
+   */
+  private String attributeDefNameId2;
+
+  /**
+   * find members with this value
+   */
+  private Object attributeValue;
+
+  /**
+   * find members with this value
+   */
+  private Object attributeValue2;
+
+  /**
+   * if looking for an attribute value on an assignment, could be multiple values
+   */
+  private Set<Object> attributeValuesOnAssignment;
+
+  /**
+   * if looking for an attribute value on an assignment, could be multiple values
+   */
+  private Set<Object> attributeValuesOnAssignment2;
+
+  /**
+   * if sorting or paging
+   */
+  private QueryOptions queryOptions;
+
+  /**
+   * use security around attribute def?  default is true
+   */
+  private boolean attributeCheckReadOnAttributeDef = true;
+
+  /**
+   * constructor
+   */
+  public MemberFinder() {
+    
+  }
+    
+  /**
+   * find all the group
+   * @return the set of groups or the empty set if none found
+   */
+  public Set<Member> findMembers() {
+
+    GrouperSession grouperSession = GrouperSession.staticGrouperSession();
+    
+    return GrouperDAOFactory.getFactory().getMember()
+        .getAllMembersSecure(grouperSession, 
+            this.queryOptions, this.attributeDefNameId, this.attributeValue, this.attributeValuesOnAssignment, 
+            this.attributeCheckReadOnAttributeDef, this.attributeDefNameId2, this.attributeValue2, this.attributeValuesOnAssignment2);
+    
+  }
+
+  
+  /**
+   * if looking for an attribute value on an assignment, could be multiple values
+   * @param theValues
+   * @return this for chaining
+   */
+  public MemberFinder addAttributeValuesOnAssignment(Object value) {
+    if (this.attributeValuesOnAssignment == null) {
+      this.attributeValuesOnAssignment = new HashSet<Object>();
+    }
+    this.attributeValuesOnAssignment.add(value);
+    return this;
+  }
+
+  /**
+   * if looking for an attribute value on an assignment2, could be multiple values
+   * @param value
+   * @return this for chaining
+   */
+  public MemberFinder addAttributeValuesOnAssignment2(Object value) {
+    if (this.attributeValuesOnAssignment2 == null) {
+      this.attributeValuesOnAssignment2 = new HashSet<Object>();
+    }
+    this.attributeValuesOnAssignment2.add(value);
+    return this;
+  }
+
+  /**
+   * use security around attribute def?  default is true
+   * @param theAttributeDefNameUseSecurity
+   * @return this for chaining
+   */
+  public MemberFinder assignAttributeCheckReadOnAttributeDef(boolean theAttributeDefNameUseSecurity) {
+    this.attributeCheckReadOnAttributeDef = theAttributeDefNameUseSecurity;
+    return this;
+  }
+
+  /**
+   * find objects with this value
+   * @param theValue
+   * @return this for chaining
+   */
+  public MemberFinder assignAttributeValue(Object theValue) {
+    if (theValue == null) {
+      throw new RuntimeException("Cant look for a null value");
+    }
+    this.attributeValue = theValue;
+    return this;
+  }
+
+  /**
+   * find objects with this value2
+   * @param theValue
+   * @return this for chaining
+   */
+  public MemberFinder assignAttributeValue2(Object theValue) {
+    if (theValue == null) {
+      throw new RuntimeException("Cant look for a null value");
+    }
+    this.attributeValue2 = theValue;
+    return this;
+  }
+
+  /**
+   * if looking for an attribute value on an assignment, could be multiple values
+   * @param theValues
+   * @return this for chaining
+   */
+  public MemberFinder assignAttributeValuesOnAssignment(Set<Object> theValues) {
+    this.attributeValuesOnAssignment = theValues;
+    return this;
+  }
+
+  /**
+   * if looking for an attribute value on an assignment2, could be multiple values
+   * @param theValues
+   * @return this for chaining
+   */
+  public MemberFinder assignAttributeValuesOnAssignment2(Set<Object> theValues) {
+    this.attributeValuesOnAssignment2 = theValues;
+    return this;
+  }
+
+  /**
+   * find groups that have this attribute def name id, note could be an assignment on an assignment
+   * @param theAttributeDefNameId
+   * @return this for chaining
+   */
+  public MemberFinder assignIdOfAttributeDefName(String theAttributeDefNameId) {
+    this.attributeDefNameId = theAttributeDefNameId;
+    return this;
+  }
+
+  /**
+   * find groups that have this attribute def name id, note could be an assignment on an assignment
+   * @param theAttributeDefNameId
+   * @return this for chaining
+   */
+  public MemberFinder assignIdOfAttributeDefName2(String theAttributeDefNameId) {
+    this.attributeDefNameId2 = theAttributeDefNameId;
+    return this;
+  }
+
+  /**
+   * find groups that have this attribute assigned
+   * @param theNameOfAttributeDefName
+   * @return this for chaining
+   */
+  public MemberFinder assignNameOfAttributeDefName(String theNameOfAttributeDefName) {
+    
+    AttributeDefName attributeDefName = AttributeDefNameFinder.findByNameAsRoot(theNameOfAttributeDefName, true);
+    
+    this.attributeDefNameId = attributeDefName.getId();
+    return this;
+  }
+
+  /**
+   * find groups that have this attribute assigned
+   * @param theNameOfAttributeDefName
+   * @return this for chaining
+   */
+  public MemberFinder assignNameOfAttributeDefName2(String theNameOfAttributeDefName) {
+    
+    // should be "findByNameAsRoot"
+    AttributeDefName attributeDefName = AttributeDefNameFinder.findByNameAsRoot(theNameOfAttributeDefName, true);
+    
+    this.attributeDefNameId2 = attributeDefName.getId();
+    return this;
+  }
+
+  /**
+   * if sorting, paging, caching, etc
+   * @param theQueryOptions
+   * @return this for chaining
+   */
+  public MemberFinder assignQueryOptions(QueryOptions theQueryOptions) {
+    this.queryOptions = theQueryOptions;
+    return this;
+  }
+
+
   /** GouperAll / GrouperSystem ought not to change... */
 	private static Member all;
 	
@@ -213,6 +437,63 @@ public class MemberFinder {
 
   }
 
+  /**
+   * might want to make sure the user is root before doing this
+   * @param sourceId
+   * @param subjectId
+   * @param subjectIdentifier
+   * @param subjectIdOrIdentifier
+   * @param memberId
+   * @return the member
+   */
+  public static Member find(String sourceId, String subjectId, String subjectIdentifier, String subjectIdOrIdentifier, String memberId) {
+    
+    List<Criterion> criterionList = new ArrayList<Criterion>();
+    
+    boolean validSearch = false;
+    
+    if (!StringUtils.isBlank(sourceId)) {
+      criterionList.add(Restrictions.eq("subjectSourceIdDb", sourceId));      
+    }
+    
+    if (!StringUtils.isBlank(subjectId)) {
+      criterionList.add(Restrictions.eq("subjectIdDb", subjectId));      
+      validSearch = true;
+    }
+    
+    if (!StringUtils.isBlank(subjectIdentifier)) {
+      criterionList.add(Restrictions.eq("subjectIdentifier0", subjectIdentifier));      
+      validSearch = true;
+    }
+    
+    if (!StringUtils.isBlank(memberId)) {
+      criterionList.add(Restrictions.eq("uuid", memberId));      
+      validSearch = true;
+    }
+    
+    if (!StringUtils.isBlank(subjectIdOrIdentifier)) {
+      criterionList.add(Restrictions.or(
+          Restrictions.eq("subjectIdDb", subjectIdOrIdentifier),
+          Restrictions.eq("subjectIdentifier0", subjectIdOrIdentifier)
+       ));     
+      validSearch = true;
+    }
+
+    if (!validSearch) {
+      throw new RuntimeException("Need to pass in id, identifier, memberId, or subjectIdOrIdentifier!");
+    }
+
+    Criterion allCriteria = HibUtils.listCrit(criterionList);
+    
+    final List<Member> memberList = HibernateSession.byCriteriaStatic().list(Member.class, allCriteria);
+    if (GrouperUtil.length(memberList) > 1) {
+      throw new SubjectNotUniqueException("More than one subject found! " + sourceId + ", " + subjectId + ", " + subjectIdentifier + ", " + subjectIdOrIdentifier + ", " + memberId);
+    }
+    Member member = GrouperUtil.listPopOne(memberList);
+
+    return member;
+  }
+  
   /**
    * Convert a {@link Subject} to a {@link Member}.
    * <pre class="eg">

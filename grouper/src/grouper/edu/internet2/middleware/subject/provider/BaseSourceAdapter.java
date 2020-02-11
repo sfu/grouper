@@ -56,6 +56,17 @@ import edu.internet2.middleware.subject.provider.SourceManager.SourceManagerStat
  */
 public abstract class BaseSourceAdapter implements Source {
 
+  
+  
+  /**
+   * @see edu.internet2.middleware.subject.Source#retrieveAllSubjectIds()
+   */
+  @Override
+  public Set<String> retrieveAllSubjectIds() {
+    throw new UnsupportedOperationException();
+  }
+
+
   /**
    * @see edu.internet2.middleware.subject.Source#getSubject(java.lang.String, boolean, java.lang.String)
    */

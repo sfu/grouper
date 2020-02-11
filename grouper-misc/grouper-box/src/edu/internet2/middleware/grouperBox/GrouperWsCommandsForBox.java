@@ -73,12 +73,16 @@ public class GrouperWsCommandsForBox {
         gcGetMembers.addSourceId(sourceId);
       }
       
+      if (GrouperClientConfig.retrieveConfig().propertyValueBoolean("grouperBox.grouperWs.autopage", true)) {
+        gcGetMembers.assignAutopage(true);
+      }
+      
       WsGetMembersResults wsGetMembersResults = gcGetMembers.execute();
 
       WsGetMembersResult wsGetMembersResult = wsGetMembersResults.getResults()[0];
         
-      WsSubject[] wsSubjects = wsGetMembersResult.getWsSubjects();
-      
+      WsSubject[] wsSubjects = wsGetMembersResult == null ? null : wsGetMembersResult.getWsSubjects();
+      //
       debugMap.put("originalMemberCount", GrouperClientUtils.length(wsSubjects));
 
       String[] attributeNames = wsGetMembersResults.getSubjectAttributeNames();
@@ -223,6 +227,11 @@ public class GrouperWsCommandsForBox {
       } else {
         gcGetMembers.addSubjectAttributeName(configSubjectAttributeForBoxUsername);
       }
+      
+      if (GrouperClientConfig.retrieveConfig().propertyValueBoolean("grouperBox.grouperWs.autopage", true)) {
+        gcGetMembers.assignAutopage(true);
+      }
+
       WsGetMembersResults wsGetMembersResults = gcGetMembers.execute();
       WsGetMembersResult wsGetMembersResult = wsGetMembersResults.getResults()[0];
       
