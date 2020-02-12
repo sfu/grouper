@@ -20,6 +20,7 @@ package edu.internet2.middleware.grouper.ws.rest.method;
 
 import java.util.List;
 
+import ca.sfu.isc.grouper.ws.rest.externalEmailSubject.WsRestExternalEmailSubjectSaveRequest;
 import org.apache.commons.lang.StringUtils;
 
 import edu.internet2.middleware.grouper.misc.GrouperVersion;
@@ -541,7 +542,40 @@ public enum GrouperWsRestPut {
           + ", " + GrouperUtil.toStringForLog(urlStrings));
     }
   
-  };
+  },
+  /** external subjects put requests */
+    externalEmailSubjects{
+
+      /**
+       * handle the incoming request based on PUT HTTP method and external subject resource
+       * @param clientVersion version of client, e.g. v1_3_000
+       * @param urlStrings not including the app name or servlet.
+       * for http://localhost/grouper-ws/servicesRest/xhtml/v3_0_000/externalSubjects/a@b.c
+       * the urlStrings would be size two: {"externalSubjects", "a@b.c"}
+       * @param requestObject is the request body converted to object
+       * @return the result object
+       */
+      @Override
+      public WsResponseBean service(
+          GrouperVersion clientVersion, List<String> urlStrings,
+          WsRequestBean requestObject) {
+
+        //url should be: /v1_3_000/externalSubjects/aStem:aGroup
+        //who cares
+        String identifier = GrouperServiceUtils.popUrlString(urlStrings);
+
+        if (requestObject instanceof WsRestExternalEmailSubjectSaveRequest) {
+          if (!StringUtils.isBlank(identifier)) {
+            throw new WsInvalidQueryException("Dont pass identifier when saving batch externalEmailSubjects: '" + identifier + "'");
+          }
+          return GrouperServiceRest.externalEmailSubjectSave(clientVersion, (WsRestExternalEmailSubjectSaveRequest)requestObject);
+        }
+
+        throw new RuntimeException("Invalid REST PUT ExternalEmailSubject request: " + clientVersion + " , " + identifier
+            + ", " + GrouperUtil.toStringForLog(urlStrings));
+      }
+
+    };
     
     
 

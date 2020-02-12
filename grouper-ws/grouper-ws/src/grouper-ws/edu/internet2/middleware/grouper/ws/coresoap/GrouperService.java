@@ -15,18 +15,10 @@
  ******************************************************************************/
 package edu.internet2.middleware.grouper.ws.coresoap;
 
-import java.sql.Timestamp;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import edu.internet2.middleware.grouper.Field;
-import edu.internet2.middleware.grouper.FieldType;
-import edu.internet2.middleware.grouper.Group;
-import edu.internet2.middleware.grouper.GroupType;
-import edu.internet2.middleware.grouper.GrouperSession;
-import edu.internet2.middleware.grouper.Stem;
+import ca.sfu.isc.grouper.ws.ExternalEmailSubjectLogic;
+import ca.sfu.isc.grouper.ws.coresoap.WsExternalEmailSubject;
+import ca.sfu.isc.grouper.ws.coresoap.WsExternalEmailSubjectSaveResults;
+import edu.internet2.middleware.grouper.*;
 import edu.internet2.middleware.grouper.attr.AttributeDefNameSave;
 import edu.internet2.middleware.grouper.attr.AttributeDefSave;
 import edu.internet2.middleware.grouper.attr.AttributeDefType;
@@ -56,6 +48,11 @@ import edu.internet2.middleware.grouper.ws.rest.attribute.WsInheritanceSetRelati
 import edu.internet2.middleware.grouper.ws.util.GrouperServiceUtils;
 import edu.internet2.middleware.grouperClient.messaging.GrouperMessageAcknowledgeType;
 import edu.internet2.middleware.grouperClient.messaging.GrouperMessageQueueType;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import java.sql.Timestamp;
 
 /**
  * <pre>
@@ -5232,5 +5229,41 @@ public class GrouperService {
     //this should be the first and only return, or else it is exiting too early
     return wsFindExternalSubjectsResults;
   }
+
+  /**
+    * save an external subject (insert or update).
+    *
+    * @param clientVersion is the version of the client.  Must be in GrouperWsVersion, e.g. v1_3_000
+    * @param wsExternalEmailSubjects
+    *            external subjects to save
+    * @param actAsSubjectLookup
+    * @param params optional: reserved for future use
+    * @since 2.4.0.SFU-patch
+    * @return the results
+    */
+   @SuppressWarnings("unchecked")
+   public WsExternalEmailSubjectSaveResults externalEmailSubjectSave(final String clientVersion,
+                                                                     final WsExternalEmailSubject[] wsExternalEmailSubjects, final WsSubjectLookup actAsSubjectLookup,
+                                                                     final WsParam[] params) {
+
+     WsExternalEmailSubjectSaveResults wsExternalEmailSubjectSaveResults = new WsExternalEmailSubjectSaveResults();
+
+     try {
+
+       GrouperVersion grouperWsVersion = GrouperVersion.valueOfIgnoreCase(
+           clientVersion, true);
+
+       wsExternalEmailSubjectSaveResults = ExternalEmailSubjectLogic.externalSubjectSave(grouperWsVersion, wsExternalEmailSubjects,
+           actAsSubjectLookup, params);
+     } catch (Exception e) {
+       wsExternalEmailSubjectSaveResults.assignResultCodeException(null, null, e);
+     }
+
+     //set response headers
+     GrouperServiceUtils.addResponseHeaders(wsExternalEmailSubjectSaveResults.getResultMetadata(), this.soap);
+
+     //this should be the first and only return, or else it is exiting too early
+     return wsExternalEmailSubjectSaveResults;
+   }
 
 }
